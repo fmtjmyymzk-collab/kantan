@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>原寸プリント作成</title>
+<style>
+  :root{
+    --bg:#f4f1ec; --card:#ffffff; --ink:#18181b; --sub:#71717a; --line:#e7e2da;
+    --acc:#ff5a36; --acc2:#ffe8e1; --ok:#16a34a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif}
+  main{max-width:520px;margin:0 auto;padding:20px 16px 120px}
+  header{margin:4px 2px 18px}
+  header h1{font-size:26px;letter-spacing:.02em;margin:0;line-height:1.25}
+  header h1 em{font-style:normal;color:var(--acc)}
+  header p{margin:6px 0 0;color:var(--sub);font-size:14px}
+
+  .step{background:var(--card);border-radius:20px;padding:18px;margin-bottom:14px;
+    box-shadow:0 1px 0 rgba(0,0,0,.03),0 6px 20px rgba(60,40,20,.05)}
+  .q{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;margin-bottom:14px}
+  .n{width:26px;height:26px;border-radius:50%;background:var(--ink);color:#fff;
+    font-size:14px;display:grid;place-items:center;flex:none}
+  .step.done .n{background:var(--ok)}
+
+  /* ① 画像 */
+  #drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    border:2px dashed #d6cfc4;border-radius:16px;padding:28px 12px;cursor:pointer;
+    color:var(--sub);font-size:15px;text-align:center;transition:.15s}
+  #drop:active{transform:scale(.98)}
+  #drop .big{font-size:34px;line-height:1}
+  #drop.has{flex-direction:row;justify-content:flex-start;border-style:solid;border-color:var(--line);padding:12px;gap:14px;text-align:left}
+  #drop.has img{width:64px;height:64px;object-fit:contain;border-radius:10px;background:
+    repeating-conic-gradient(#eee 0 25%,#fff 0 50%) 0 0/12px 12px}
+  #drop.has b{color:var(--ink);font-size:15px;display:block}
+  #file{display:none}
+
+  /* ② 大きさ */
+  .size{display:flex;align-items:center;justify-content:center;gap:14px;margin:4px 0 12px}
+  .round{width:52px;height:52px;border-radius:50%;border:0;background:#f1ede6;font-size:26px;
+    color:var(--ink);cursor:pointer;flex:none}
+  .round:active{background:#e6e0d6}
+  .val{text-align:center;min-width:150px}
+  .val .num{font-size:54px;font-weight:800;letter-spacing:-.02em;line-height:1}
+  .val .num small{font-size:22px;font-weight:700;margin-left:2px}
+  .val .dim{font-size:13px;color:var(--sub);margin-top:6px}
+  .dims{display:flex;align-items:stretch;gap:8px}
+  .dbox{flex:1;background:#f7f4ef;border-radius:16px;padding:12px 10px 10px;text-align:center;min-width:0}
+  .dbox .lbl{font-size:13px;color:var(--sub);font-weight:700}
+  .inp{display:flex;align-items:baseline;justify-content:center;gap:2px;margin:2px 0 8px}
+  .inp input{width:1.2em;min-width:.8em;max-width:3em;border:0;background:transparent;text-align:center;
+    font-size:40px;font-weight:800;letter-spacing:-.02em;color:var(--ink);padding:0;font-family:inherit;outline:none;
+    border-bottom:2px solid transparent}
+  .inp input:focus{border-bottom-color:var(--acc)}
+  .inp span{font-size:16px;font-weight:700}
+  .pm{display:flex;gap:6px}
+  .pm button{flex:1;border:0;border-radius:10px;background:#fff;font-size:22px;padding:6px 0;color:var(--ink);cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .pm button:active{background:#eee8df}
+  .lock{flex:none;width:58px;border:0;border-radius:14px;background:#f1ede6;color:var(--sub);cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:700;line-height:1.2;padding:6px 0}
+  .lock.on{background:var(--ink);color:#fff}
+  .fitbox{display:none;margin-top:14px}
+  .fitq{font-size:13px;color:var(--sub);text-align:center;margin-bottom:8px}
+  .seg{display:flex;background:#f1ede6;border-radius:12px;padding:3px;gap:3px}
+  .seg button{flex:1;border:0;background:transparent;border-radius:9px;padding:9px 2px;font-size:13px;font-weight:700;color:var(--sub);cursor:pointer}
+  .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  .chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .chip{border:0;background:#f1ede6;border-radius:999px;padding:9px 15px;font-size:15px;
+    color:var(--ink);cursor:pointer;font-weight:600}
+  .chip.on{background:var(--ink);color:#fff}
+  .hint{font-size:12px;color:var(--sub);text-align:center;margin-top:10px}
+
+  /* ③ 個数 */
+  .count{display:flex;align-items:center;justify-content:center;gap:14px}
+  .count .val .num{font-size:44px}
+  .maxbtn{display:block;margin:12px auto 0;border:0;background:var(--acc2);color:var(--acc);
+    border-radius:999px;padding:10px 18px;font-weight:700;font-size:15px;cursor:pointer}
+
+  /* プレビュー */
+  .sheetwrap{display:flex;justify-content:center;padding:6px 0 4px}
+  #preview{max-width:100%;max-height:420px;height:auto;display:block;background:#fff;
+    box-shadow:0 2px 4px rgba(0,0,0,.08),0 12px 30px rgba(60,40,20,.14);border-radius:2px}
+  .cap{font-size:13px;color:var(--sub);text-align:center;margin-top:10px}
+  .cap b{color:var(--ink)}
+  .warn{color:#dc2626;font-weight:600}
+
+  details{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+  summary{font-size:14px;color:var(--sub);cursor:pointer;list-style:none;text-align:center}
+  summary::-webkit-details-marker{display:none}
+  .opt{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 2px;font-size:15px;border-bottom:1px solid #f2eee8}
+  .opt:last-child{border-bottom:0}
+  .opt select,.opt input[type=number]{font-size:16px;padding:7px 9px;border:1px solid var(--line);border-radius:9px;background:#fff;width:130px}
+  .switch{position:relative;width:46px;height:28px;flex:none}
+  .switch input{opacity:0;width:0;height:0}
+  .switch span{position:absolute;inset:0;background:#d9d3c9;border-radius:999px;transition:.2s}
+  .switch span:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .switch input:checked+span{background:var(--ok)}
+  .switch input:checked+span:before{transform:translateX(18px)}
+  .optnote{font-size:12px;color:var(--sub);margin:-4px 2px 6px}
+
+  /* 下の保存バー */
+  .bar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    background:linear-gradient(to top,var(--bg) 70%,rgba(244,241,236,0))}
+  .bar .in{max-width:520px;margin:0 auto}
+  #save{width:100%;border:0;border-radius:16px;padding:17px;font-size:18px;font-weight:800;
+    background:var(--acc);color:#fff;cursor:pointer;box-shadow:0 8px 20px rgba(255,90,54,.35)}
+  #save:disabled{background:#cfc8bd;box-shadow:none}
+  #save:active:not(:disabled){transform:translateY(1px)}
+  #msg{text-align:center;font-size:13px;margin-top:6px;min-height:1em;color:var(--sub)}
+
+  /* 完了シート */
+  #howto{display:none}
+  #howto ol{margin:0;padding:0;list-style:none;counter-reset:s}
+  #howto li{counter-increment:s;display:flex;gap:12px;align-items:flex-start;padding:10px 0;font-size:15px;line-height:1.55;border-bottom:1px solid #f2eee8}
+  #howto li:last-child{border:0}
+  #howto li:before{content:counter(s);flex:none;width:24px;height:24px;border-radius:50%;background:var(--acc2);color:var(--acc);font-weight:800;font-size:13px;display:grid;place-items:center;margin-top:1px}
+  #howto b{color:var(--acc)}
+  #fallback{display:none;margin-top:10px}
+  .again{width:100%;border:0;border-radius:14px;padding:14px;font-size:16px;font-weight:800;background:var(--ink);color:#fff;cursor:pointer}
+  #fallback img{width:100%;border-radius:8px;border:1px solid var(--line)}
+  .pnglink{display:block;text-align:center;margin-top:10px;font-size:13px;color:var(--sub);background:none;border:0;text-decoration:underline;cursor:pointer;width:100%}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>画像を、<em>ぴったり何cm</em>で<br>印刷する。</h1>
+    <p>選んで、大きさを決めて、保存するだけ。</p>
+  </header>
+
+  <section class="step" id="s1">
+    <div class="q"><span class="n">1</span>画像をえらぶ</div>
+    <label id="drop" for="file">
+      <span class="big">＋</span>
+      <span>タップして画像を選ぶ</span>
+    </label>
+    <input type="file" id="file" accept="image/*">
+  </section>
+
+  <section class="step" id="s2">
+    <div class="q"><span class="n">2</span>何cmにする？</div>
+    <div class="dims">
+      <div class="dbox">
+        <div class="lbl">横</div>
+        <div class="inp"><input id="wIn" type="text" inputmode="decimal" value="5"><span>cm</span></div>
+        <div class="pm"><button data-k="w" data-d="-0.5" aria-label="横を小さく">−</button><button data-k="w" data-d="0.5" aria-label="横を大きく">＋</button></div>
+      </div>
+      <button id="lock" class="lock on" aria-label="比率を固定">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path id="lk1" d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path id="lk2" d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+        <span id="lockTxt">比率<br>固定</span>
+      </button>
+      <div class="dbox">
+        <div class="lbl">縦</div>
+        <div class="inp"><input id="hIn" type="text" inputmode="decimal" value="5"><span>cm</span></div>
+        <div class="pm"><button data-k="h" data-d="-0.5" aria-label="縦を小さく">−</button><button data-k="h" data-d="0.5" aria-label="縦を大きく">＋</button></div>
+      </div>
+    </div>
+    <div class="hint" id="lockHint">片方を変えると、もう片方も自動で合わせます</div>
+    <div id="fitBox" class="fitbox">
+      <div class="fitq">画像と縦横の比率が違います。どうする？</div>
+      <div class="seg" id="fit">
+        <button data-v="crop" class="on">はみ出しを切る</button>
+        <button data-v="stretch">引き伸ばす</button>
+        <button data-v="pad">白で埋める</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" id="s3">
+    <div class="q"><span class="n">3</span>何個ならべる？</div>
+    <div class="count">
+      <button class="round" data-c="-1" aria-label="減らす">−</button>
+      <div class="val"><div class="num" id="cnt">1<small>個</small></div></div>
+      <button class="round" data-c="1" aria-label="増やす">＋</button>
+    </div>
+    <button class="maxbtn" id="max">入るだけ並べる</button>
+  </section>
+
+  <section class="step">
+    <div class="sheetwrap"><canvas id="preview"></canvas></div>
+    <div class="cap" id="cap"></div>
+    <details>
+      <summary>細かい設定 ▾</summary>
+      <div class="opt"><span>用紙</span>
+        <select id="paper">
+          <option value="210x297" selected>A4</option>
+          <option value="297x420">A3</option>
+          <option value="182x257">B5</option>
+          <option value="100x148">ハガキ</option>
+          <option value="89x127">L判</option>
+          <option value="127x178">2L判</option>
+        </select></div>
+      <div class="opt"><span>カット線</span><label class="switch"><input type="checkbox" id="cut" checked><span></span></label></div>
+      <div class="opt"><span>画像どうしの間隔</span><select id="gap">
+          <option value="0">なし</option><option value="2">2mm</option><option value="4" selected>4mm</option><option value="8">8mm</option></select></div>
+      <div class="opt"><span>試し刷りの目盛り</span><input type="number" id="measured" placeholder="50.0" step="0.1" inputmode="decimal"></div>
+      <div class="optnote">試し刷りで「5cm」の目盛りを測って、実際の長さ(mm)を入れると次から自動で補正します。</div>
+    </details>
+  </section>
+
+  <section class="step" id="howto">
+    <div class="q"><span class="n" style="background:var(--ok)">✓</span>PrintSmashに渡して、お店へ</div>
+    <ol>
+      <li><span>保存のときに出る共有メニューで <b>PrintSmash</b> を選ぶ（なければ「ファイルに保存」して、あとでPrintSmashアプリから選ぶ）</span></li>
+      <li><span>お店のマルチコピー機で <b>プリントサービス → スマートフォン送信</b> を選び、アプリの案内どおりに送信</span></li>
+      <li><span><b>ドキュメントプリント</b>、用紙は <b id="howPaper">A4</b>、倍率の設定があれば <b>等倍（100%）</b></span></li>
+      <li><span>印刷したら目盛りを定規で確認。<b>ちょうど5cm</b>ならOK</span></li>
+    </ol>
+    <div id="fallback"><div class="hint">この画面では保存ボタンが使えないようです。下の画像を長押しして保存してください。</div><img id="fbImg" alt=""></div>
+  </section>
+</main>
+
+<div class="bar"><div class="in">
+  <button id="save" disabled>画像を選んでください</button>
+  <div id="msg"></div>
+</div></div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const MM = 25.4, MARGIN = 8, RULER = 50, RULER_SPACE = 12;
+  let img = null, imgName = "image", wCm = 5, hCm = 5, lock = true, fitMode = "crop", count = 1;
+
+  // 補正値（試し刷りで測った長さ）
+  let measured = null;
+  try { const v = parseFloat(localStorage.getItem("ps_measured")); if (v > 0) { measured = v; $("measured").value = v; } } catch(e){}
+  const scale = () => measured ? RULER / measured : 1;
+
+  const fmt = v => (Math.round(v * 10) / 10).toString();
+
+  const ratio = () => img ? img.width / img.height : 1;
+  function itemMM(){ return [wCm * 10, hCm * 10]; }
+  const mismatch = () => img && Math.abs((wCm / hCm) / ratio() - 1) > 0.01;
+
+  function fit(pw, ph, w, h, g){
+    const cols = Math.floor((pw - 2*MARGIN + g) / (w + g));
+    const rows = Math.floor((ph - 2*MARGIN - RULER_SPACE + g) / (h + g));
+    return { cols: Math.max(0, cols), rows: Math.max(0, rows), max: Math.max(0, cols) * Math.max(0, rows) };
+  }
+
+  function layout(){
+    const [a, b] = $("paper").value.split("x").map(Number);
+    const [w, h] = itemMM();
+    const g = parseFloat($("gap").value);
+    // 縦横どちらの向きが多く入るかを自動で選ぶ
+    const P = fit(a, b, w, h, g), Ls = fit(b, a, w, h, g);
+    const useL = Ls.max > P.max && count > P.max;
+    const [pw, ph] = useL ? [b, a] : [a, b];
+    const F = useL ? Ls : P;
+    const n = Math.min(count, F.max);
+    const cols = Math.min(F.cols, n), rows = Math.ceil(n / Math.max(F.cols, 1));
+    const gw = cols*w + (cols-1)*g, gh = rows*h + (rows-1)*g;
+    const x0 = (pw - gw) / 2, y0 = Math.max(MARGIN, (ph - RULER_SPACE - gh) / 2);
+    const cells = [];
+    for (let i = 0; i < n; i++) cells.push([x0 + (i % F.cols)*(w+g), y0 + Math.floor(i / F.cols)*(h+g)]);
+    return { pw, ph, w, h, cells, max: F.max, landscape: useL };
+  }
+
+  // k = 1mmあたりのpx。印刷用は補正をかける
+  function draw(ctx, Lo, k, forPrint){
+    const s = forPrint ? scale() : 1;
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, Lo.pw*k, Lo.ph*k);
+    const cx = Lo.pw/2, cy = Lo.ph/2;
+    ctx.save();
+    // 補正は用紙中心を基準に全体を拡大縮小
+    ctx.translate(cx*k, cy*k); ctx.scale(s, s); ctx.translate(-cx*k, -cy*k);
+    for (const [x, y] of Lo.cells){
+      if (img){
+        ctx.imageSmoothingQuality = "high";
+        const ir = ratio(), cr = Lo.w / Lo.h;
+        if (fitMode === "stretch" || Math.abs(cr/ir - 1) <= 0.01){
+          ctx.drawImage(img, x*k, y*k, Lo.w*k, Lo.h*k);
+        } else if (fitMode === "crop"){
+          let sx=0, sy=0, sw=img.width, sh=img.height;
+          if (ir > cr){ sw = img.height*cr; sx = (img.width-sw)/2; } else { sh = img.width/cr; sy = (img.height-sh)/2; }
+          ctx.drawImage(img, sx, sy, sw, sh, x*k, y*k, Lo.w*k, Lo.h*k);
+        } else {
+          let dw = Lo.w, dh = Lo.h;
+          if (ir > cr) dh = Lo.w / ir; else dw = Lo.h * ir;
+          ctx.drawImage(img, (x + (Lo.w-dw)/2)*k, (y + (Lo.h-dh)/2)*k, dw*k, dh*k);
+        }
+      } else {
+        ctx.fillStyle = "#f1ede6"; ctx.fillRect(x*k, y*k, Lo.w*k, Lo.h*k);
+      }
+      if ($("cut").checked){
+        ctx.strokeStyle = "#c4c4c4"; ctx.lineWidth = Math.max(1, .12*k);
+        ctx.strokeRect(x*k, y*k, Lo.w*k, Lo.h*k);
+      }
+    }
+    // 確認用の目盛り（5cm）
+    const rx = MARGIN, ry = Lo.ph - MARGIN;
+    ctx.strokeStyle = "#111"; ctx.lineWidth = Math.max(1, .25*k);
+    ctx.beginPath(); ctx.moveTo(rx*k, ry*k); ctx.lineTo((rx+RULER)*k, ry*k);
+    for (let i = 0; i <= RULER; i += 5){ const t = i % 10 === 0 ? 3 : 1.6; ctx.moveTo((rx+i)*k, ry*k); ctx.lineTo((rx+i)*k, (ry-t)*k); }
+    ctx.stroke();
+    ctx.fillStyle = "#111"; ctx.font = `600 ${2.8*k}px sans-serif`; ctx.textBaseline = "alphabetic";
+    ctx.fillText(Lo.pw - MARGIN*2 - RULER > 42 ? "← ここがちょうど5cmなら正確" : "← 5cm", (rx+RULER+2)*k, (ry-.3)*k);
+    ctx.restore();
+  }
+
+  function render(){
+    const Lo = layout();
+    const cv = $("preview"), k = Math.min(700/Lo.pw, 700/Lo.ph);
+    cv.width = Math.round(Lo.pw*k); cv.height = Math.round(Lo.ph*k);
+    cv.style.aspectRatio = `${Lo.pw}/${Lo.ph}`;
+    draw(cv.getContext("2d"), Lo, k, false);
+
+    if (document.activeElement !== $("wIn")) $("wIn").value = fmt(wCm);
+    if (document.activeElement !== $("hIn")) $("hIn").value = fmt(hCm);
+    ["wIn","hIn"].forEach(id => { const el = $(id); el.style.width = (Math.max(1, el.value.length) * .6 + .15) + "em"; });
+    $("lock").classList.toggle("on", lock);
+    $("lockTxt").innerHTML = lock ? "比率<br>固定" : "自由";
+    $("lockHint").textContent = lock ? "片方を変えると、もう片方も自動で合わせます" : "縦と横を別々に決められます";
+    $("fitBox").style.display = mismatch() ? "block" : "none";
+    document.querySelectorAll("#fit button").forEach(b => b.classList.toggle("on", b.dataset.v === fitMode));
+    $("cnt").innerHTML = `${count}<small>個</small>`;
+
+    const paperName = $("paper").selectedOptions[0].text;
+    $("howPaper").textContent = paperName + (Lo.landscape ? "（横向き）" : "");
+    let cap;
+    if (Lo.max === 0) cap = `<span class="warn">大きすぎて${paperName}に入りません</span>`;
+    else if (count > Lo.max) cap = `<span class="warn">${paperName}1枚には${Lo.max}個まで</span>　いま${Lo.cells.length}個`;
+    else cap = `<b>${paperName}${Lo.landscape ? "横" : ""}</b> に <b>${Lo.cells.length}個</b>${Lo.max - Lo.cells.length ? `（あと${Lo.max - Lo.cells.length}個入ります）` : "（満杯）"}`;
+    if (measured) cap += `<br>補正中：${fmt(scale()*100)}%`;
+    $("cap").innerHTML = cap;
+
+    const ok = img && Lo.cells.length > 0;
+    $("save").disabled = !ok;
+    $("save").textContent = !img ? "画像を選んでください" : ok ? "PDFを作ってPrintSmashへ" : "大きさを小さくしてください";
+  }
+
+  // ---------- 書き出し ----------
+  function hiCanvas(){
+    const Lo = layout();
+    let dpi = 300;
+    const px = (Lo.pw/MM*dpi) * (Lo.ph/MM*dpi);
+    if (px > 15e6) dpi = Math.floor(300 * Math.sqrt(15e6/px));
+    const k = dpi / MM, cv = document.createElement("canvas");
+    cv.width = Math.round(Lo.pw*k); cv.height = Math.round(Lo.ph*k);
+    draw(cv.getContext("2d"), Lo, k, true);
+    return { cv, dpi, Lo };
+  }
+
+  function buildPdf(jpg, pxW, pxH, pwMM, phMM){
+    const enc = new TextEncoder();
+    const W = (pwMM/MM*72).toFixed(3), H = (phMM/MM*72).toFixed(3);
+    const content = `q ${W} 0 0 ${H} 0 0 cm /Im0 Do Q`;
+    const chunks = [], off = []; let pos = 0;
+    const push = d => { const u = typeof d === "string" ? enc.encode(d) : d; chunks.push(u); pos += u.length; };
+    const obj = (n, f) => { off[n] = pos; push(`${n} 0 obj\n`); f(); push("\nendobj\n"); };
+    push("%PDF-1.4\n%âãÏÓ\n");
+    obj(1, () => push("<< /Type /Catalog /Pages 2 0 R >>"));
+    obj(2, () => push("<< /Type /Pages /Kids [3 0 R] /Count 1 >>"));
+    obj(3, () => push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`));
+    obj(4, () => { push(`<< /Type /XObject /Subtype /Image /Width ${pxW} /Height ${pxH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>\nstream\n`); push(jpg); push("\nendstream"); });
+    obj(5, () => push(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`));
+    const x = pos;
+    let t = "xref\n0 6\n0000000000 65535 f \n";
+    for (let i = 1; i <= 5; i++) t += String(off[i]).padStart(10, "0") + " 00000 n \n";
+    push(t + `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${x}\n%%EOF\n`);
+    return new Blob(chunks, { type: "application/pdf" });
+  }
+
+  const crcT = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++){ let c = n; for (let j = 0; j < 8; j++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = u => { let c = 0xffffffff; for (let i = 0; i < u.length; i++) c = crcT[(c ^ u[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  function withDpi(buf, dpi){
+    const src = new Uint8Array(buf), ppm = Math.round(dpi/0.0254);
+    const ch = new Uint8Array(21), dv = new DataView(ch.buffer);
+    dv.setUint32(0, 9); ch.set([0x70,0x48,0x59,0x73], 4); dv.setUint32(8, ppm); dv.setUint32(12, ppm); ch[16] = 1;
+    dv.setUint32(17, crc32(ch.subarray(4, 17)));
+    const parts = [src.subarray(0, 33), ch]; let p = 33;
+    while (p < src.length){
+      const len = new DataView(src.buffer, p, 4).getUint32(0), e = p + 12 + len;
+      if (String.fromCharCode(...src.subarray(p+4, p+8)) !== "pHYs") parts.push(src.subarray(p, e));
+      p = e;
+    }
+    return new Blob(parts, { type: "image/png" });
+  }
+  const toBlob = (cv, t, q) => new Promise(r => cv.toBlob(r, t, q));
+
+  const fname = ext => { const Lo = layout(); return `${imgName}_${fmt(Lo.w/10)}x${fmt(Lo.h/10)}cm_${Lo.cells.length}個.${ext}`; };
+
+  let ready = null; // { blob, name }
+  async function shareReady(){
+    const f = new File([ready.blob], ready.name, { type: ready.blob.type });
+    await navigator.share({ files: [f] });
+  }
+  function downloadReady(){
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(ready.blob); a.download = ready.name;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  async function offer(blob, name){
+    ready = { blob, name };
+    const canShare = navigator.canShare && navigator.canShare({ files: [new File([blob], name, { type: blob.type })] });
+    showHowto();
+    if (canShare){
+      try { await shareReady(); $("msg").innerHTML = `<span style="color:var(--ok)">送りました</span>`; return; }
+      catch(e){
+        if (e && e.name === "AbortError"){ $("msg").textContent = "キャンセルしました"; showAgain(true); return; }
+        showAgain(true); $("msg").textContent = "準備できました。下のボタンをもう一度タップしてください"; return;
+      }
+    }
+    downloadReady(); $("msg").innerHTML = `<span style="color:var(--ok)">ダウンロードしました</span>`; showAgain(false);
+  }
+  function showAgain(share){
+    const box = $("fallback"); box.style.display = "block";
+    box.innerHTML = "";
+    const b = document.createElement("button");
+    b.className = "again"; b.textContent = share ? "PrintSmashへ送る（共有）" : "もう一度ダウンロード";
+    b.onclick = async () => { try { share ? await shareReady() : downloadReady(); } catch(e){} };
+    box.appendChild(b);
+  }
+  function showHowto(){ const h = $("howto"); h.style.display = "block"; h.scrollIntoView({ behavior: "smooth", block: "start" }); }
+
+  $("save").onclick = async () => {
+    $("msg").textContent = "作成中…"; $("save").disabled = true;
+    try {
+      const { cv, Lo } = hiCanvas();
+      const jpg = new Uint8Array(await (await toBlob(cv, "image/jpeg", .95)).arrayBuffer());
+      await offer(buildPdf(jpg, cv.width, cv.height, Lo.pw, Lo.ph), fname("pdf"));
+    } finally { render(); }
+  };
+
+  // PNGは完了カードの下に控えめに
+  const pngBtn = document.createElement("button");
+  pngBtn.className = "pnglink"; pngBtn.textContent = "写真プリント用にPNGで保存";
+  $("howto").appendChild(pngBtn);
+  pngBtn.onclick = async () => {
+    $("msg").textContent = "作成中…";
+    const { cv, dpi } = hiCanvas();
+    const png = withDpi(await (await toBlob(cv, "image/png")).arrayBuffer(), dpi);
+    await offer(png, fname("png"));
+  };
+
+  // ---------- 操作 ----------
+  $("file").onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    imgName = (f.name.replace(/\.[^.]+$/, "") || "image").slice(0, 30);
+    const url = URL.createObjectURL(f), im = new Image();
+    im.onload = () => {
+      img = im;
+      const d = $("drop"); d.classList.add("has");
+      d.innerHTML = `<img src="${url}" alt=""><span><b>${imgName}</b>タップで変更</span>`;
+      $("s1").classList.add("done");
+      if (lock) setW(wCm);
+      render();
+    };
+    im.src = url;
+  };
+  const clamp = v => Math.min(100, Math.max(.3, Math.round(v * 10) / 10));
+  function setW(v){ wCm = clamp(v); if (lock) hCm = clamp(wCm / ratio()); }
+  function setH(v){ hCm = clamp(v); if (lock) wCm = clamp(hCm * ratio()); }
+  document.querySelectorAll(".pm button").forEach(b => b.onclick = () => {
+    const d = parseFloat(b.dataset.d);
+    b.dataset.k === "w" ? setW(wCm + d) : setH(hCm + d);
+    render();
+  });
+  const parse = v => parseFloat(String(v).replace(/[０-９．]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace("。", "."));
+  $("wIn").addEventListener("input", e => { const v = parse(e.target.value); if (v > 0) { setW(v); render(); } });
+  $("hIn").addEventListener("input", e => { const v = parse(e.target.value); if (v > 0) { setH(v); render(); } });
+  ["wIn","hIn"].forEach(id => { $(id).addEventListener("focus", e => e.target.select()); $(id).addEventListener("blur", render); });
+  $("lock").onclick = () => { lock = !lock; if (lock) setW(wCm); render(); };
+  document.querySelectorAll("#fit button").forEach(b => b.onclick = () => { fitMode = b.dataset.v; render(); });
+  document.querySelectorAll("[data-c]").forEach(b => b.onclick = () => { count = Math.max(1, count + parseInt(b.dataset.c)); render(); });
+  $("max").onclick = () => { count = 999; const Lo = layout(); count = Math.max(1, Lo.max); render(); };
+  ["paper","gap","cut"].forEach(id => $(id).addEventListener("change", render));
+  $("measured").addEventListener("input", () => {
+    const v = parseFloat($("measured").value);
+    measured = v > 20 && v < 80 ? v : null;
+    try { measured ? localStorage.setItem("ps_measured", measured) : localStorage.removeItem("ps_measured"); } catch(e){}
+    render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

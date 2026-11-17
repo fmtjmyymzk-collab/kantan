@@ -66,6 +66,8 @@
   .seg{display:flex;background:#f1ede6;border-radius:12px;padding:3px;gap:3px}
   .seg button{flex:1;border:0;background:transparent;border-radius:9px;padding:9px 2px;font-size:13px;font-weight:700;color:var(--sub);cursor:pointer}
   .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  .orow{display:flex;align-items:center;gap:12px;margin-bottom:14px;font-size:14px;font-weight:700;color:var(--sub)}
+  .orow .seg{flex:1}
   .chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
   .chip{border:0;background:#f1ede6;border-radius:999px;padding:9px 15px;font-size:15px;
     color:var(--ink);cursor:pointer;font-weight:600}
@@ -179,6 +181,13 @@
   </section>
 
   <section class="step">
+    <div class="orow"><span>用紙の向き</span>
+      <div class="seg" id="orient">
+        <button data-v="auto" class="on">自動</button>
+        <button data-v="p">縦</button>
+        <button data-v="l">横</button>
+      </div>
+    </div>
     <div class="sheetwrap"><canvas id="preview"></canvas></div>
     <div class="cap" id="cap"></div>
     <details>
@@ -221,7 +230,7 @@
 (() => {
   const $ = id => document.getElementById(id);
   const MM = 25.4, MARGIN = 8, RULER = 50, RULER_SPACE = 12;
-  let img = null, imgName = "image", wCm = 5, hCm = 5, lock = true, fitMode = "crop", count = 1;
+  let img = null, imgName = "image", wCm = 5, hCm = 5, lock = true, fitMode = "crop", count = 1, orient = "auto";
 
   // 補正値（試し刷りで測った長さ）
   let measured = null;
@@ -246,7 +255,7 @@
     const g = parseFloat($("gap").value);
     // 縦横どちらの向きが多く入るかを自動で選ぶ
     const P = fit(a, b, w, h, g), Ls = fit(b, a, w, h, g);
-    const useL = Ls.max > P.max && count > P.max;
+    const useL = orient === "l" || (orient === "auto" && Ls.max > P.max && count > P.max);
     const [pw, ph] = useL ? [b, a] : [a, b];
     const F = useL ? Ls : P;
     const n = Math.min(count, F.max);
@@ -313,6 +322,7 @@
     $("lock").classList.toggle("on", lock);
     $("lockTxt").innerHTML = lock ? "比率<br>固定" : "自由";
     $("lockHint").textContent = lock ? "片方を変えると、もう片方も自動で合わせます" : "縦と横を別々に決められます";
+    document.querySelectorAll("#orient button").forEach(b => b.classList.toggle("on", b.dataset.v === orient));
     $("fitBox").style.display = mismatch() ? "block" : "none";
     document.querySelectorAll("#fit button").forEach(b => b.classList.toggle("on", b.dataset.v === fitMode));
     $("cnt").innerHTML = `${count}<small>個</small>`;
@@ -463,6 +473,7 @@
   $("hIn").addEventListener("input", e => { const v = parse(e.target.value); if (v > 0) { setH(v); render(); } });
   ["wIn","hIn"].forEach(id => { $(id).addEventListener("focus", e => e.target.select()); $(id).addEventListener("blur", render); });
   $("lock").onclick = () => { lock = !lock; if (lock) setW(wCm); render(); };
+  document.querySelectorAll("#orient button").forEach(b => b.onclick = () => { orient = b.dataset.v; render(); });
   document.querySelectorAll("#fit button").forEach(b => b.onclick = () => { fitMode = b.dataset.v; render(); });
   document.querySelectorAll("[data-c]").forEach(b => b.onclick = () => { count = Math.max(1, count + parseInt(b.dataset.c)); render(); });
   $("max").onclick = () => { count = 999; const Lo = layout(); count = Math.max(1, Lo.max); render(); };
